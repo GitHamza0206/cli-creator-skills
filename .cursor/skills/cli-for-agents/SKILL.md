@@ -1,79 +1,133 @@
 ---
 name: cli-for-agents
-description: Build CLIs that AI agents can run reliably—non-interactive flags, progressive discovery, examples in --help, stdin and pipelines, fast-fail errors, idempotency, dry-run, and --yes. Use when designing or reviewing CLIs meant for agents, CI, or automation.
+description: Build CLIs that AI agents can run—non-interactive flags, progressive discovery, subcommand help with examples, stdin and pipelines, fast actionable errors, idempotency, dry-run, --yes or --force, predictable noun-verb structure, and factual success output. Use when implementing, reviewing, or refactoring CLIs for agents, CI, or automation.
 metadata:
-  inspired_by: Building CLIs for agents (Eric Zakariasson)
+  source: Building CLIs for agents — Eric Zakariasson
+  reference: https://x.com/ericzakariasson/status/2036762680401223946
 ---
 
-# CLIs for agents
+# Building CLIs for agents
 
-Most CLIs assume a human at the keyboard. Agents get stuck on interactive prompts, empty help, or ambiguous errors. Design so every input is explicit and discoverable.
+Human-oriented CLIs block agents: interactive prompts, walls of docs, help without examples. Design CLIs so **every input is explicit**, **help is discovered in layers**, and **automation can recover from mistakes**.
 
 ## When to Use
 
-- Designing a new CLI or subcommand that agents or scripts will call
-- Reviewing a CLI for “works in terminal but breaks for automation” issues
-- Adding flags so existing interactive flows become scriptable
+- Implementing a new CLI or subcommand that agents or scripts will run
+- Auditing an existing CLI for blocking prompts, weak `--help`, or non-idempotent side effects
+- Adding flags so interactive-only flows become scriptable
 
-## Instructions
+## Core principles (from the article)
 
-1. **Non-interactive by default.** Never block on arrow-key menus or mid-run prompts agents cannot answer. Every value should be passable as a flag (or env). Keep TTY/interactive mode only as a **fallback** when flags are missing—not the primary path.
+### 1. Non-interactive first
 
-   ```bash
-   # blocks an agent
-   mycli deploy
-   # ? Which environment? (use arrow keys)
+If the CLI drops into a prompt mid-run, an agent is stuck (no arrow keys, no timely “y”). **Every input must be passable as a flag** (or equivalent non-interactive channel). Interactive mode is a **fallback** when flags are missing—not the primary path.
 
-   # works
-   mycli deploy --env staging
-   ```
+```bash
+# blocks an agent
+$ mycli deploy
+? Which environment? (use arrow keys)
 
-2. **Progressive documentation.** Do not dump the full manual on first run. Agents discover: `mycli` → subcommands → `mycli deploy --help`. Let them pull only what they need.
+# works
+$ mycli deploy --env staging
+```
 
-3. **`--help` must include examples.** Every subcommand gets `--help`. Examples do most of the work; agents pattern-match faster from `mycli deploy --env staging --tag v1.2.3` than from prose alone. List options, defaults, then **Examples:** with copy-paste invocations.
+### 2. Progressive documentation
 
-4. **Flags and stdin for inputs.** Support pipelines and composition. Avoid odd positional ordering and avoid falling back to interactive prompts for missing values.
+Do **not** dump the full manual up front. Agents discover: run `mycli`, see subcommands, run `mycli deploy --help`, get what they need. **No wasted context** on commands they will not use.
 
-   ```bash
-   cat config.json | mycli config import --stdin
-   mycli deploy --env staging --tag "$(mycli build --output tag-only)"
-   ```
+### 3. `--help` that works (examples do the teaching)
 
-5. **Fail fast with actionable errors.** If a required flag is missing, exit immediately with a suggested command (and pointers to list commands if useful).
+**Every subcommand** has `--help`. **Every `--help` includes examples.** Agents pattern-match from invocations faster than from long descriptions.
 
-   ```text
-   Error: No image tag specified.
-     mycli deploy --env staging --tag <image-tag>
-     Available tags: mycli build list --output tags
-   ```
+```bash
+$ mycli deploy --help
+Options:
+  --env     Target environment (staging, production)
+  --tag     Image tag (default: latest)
+  --force   Skip confirmation
 
-6. **Idempotent commands.** Agents retry often (timeouts, lost context). Running the same deploy twice should be a no-op or clearly report “already done,” not create duplicates.
+Examples:
+  mycli deploy --env staging
+  mycli deploy --env production --tag v1.2.3
+  mycli deploy --env staging --force
+```
 
-7. **`--dry-run` for destructive work.** Let agents preview deploys, deletes, or migrations, then run without `--dry-run` after validating the plan. Summarize what would change; make “no changes made” obvious.
+### 4. Flags and stdin for everything (pipelines)
 
-8. **`--yes` / `--force` for confirmations.** Humans get “are you sure?”; agents pass `--yes` (or documented equivalent). Keep the safe default for humans; document the bypass for automation.
+Agents think in **pipelines**. Support **chaining** and **pipes**. Avoid weird positional ordering and **do not** fall back to interactive prompts for missing values.
 
-9. **Predictable structure.** If `mycli service list` exists, agents infer `mycli deploy list`, `mycli config list`. Pick one pattern (e.g. resource + verb) and use it consistently.
+```bash
+cat config.json | mycli config import --stdin
+mycli deploy --env staging --tag $(mycli build --output tag-only)
+```
 
-10. **Useful success output.** On success, print machine-relevant facts: IDs, URLs, primary artifact names, duration. Minimize decorative output; plain key-value or structured lines are easier to parse and chain.
+### 5. Fail fast with actionable errors
 
-    ```text
-    deployed v1.2.3 to staging
-    url: https://staging.myapp.com
-    deploy_id: dep_abc123
-    duration: 34s
-    ```
+If a required flag is missing, **do not hang**. Exit immediately and show the **correct invocation**. Agents self-correct when given something concrete to run.
 
-## Anti-patterns
+```bash
+Error: No image tag specified.
+  mycli deploy --env staging --tag <image-tag>
+  Available tags: mycli build list --output tags
+```
 
-- Interactive wizards as the only way to supply required data
-- `--help` with options but no examples
-- Hanging or prompting instead of exiting with a fix suggestion
-- Non-idempotent side effects on repeated identical invocations
+### 6. Idempotent commands
 
-## Checklist
+Agents **retry constantly** (timeouts, lost context). Running the same command twice should yield **“already done” / no-op**, not duplicates.
 
-- [ ] Full flows work with zero prompts when flags/env are provided
-- [ ] Each subcommand’s `--help` ends with concrete examples
-- [ ] Destructive commands support `--dry-run` and documented non-interactive confirm bypass
-- [ ] Missing required input yields immediate stderr + suggested invocation
+### 7. `--dry-run` for destructive actions
+
+Let agents **preview** deploys, deletes, or other risky operations, then run for real after validating the plan.
+
+```bash
+$ mycli deploy --env production --tag v1.2.3 --dry-run
+Would deploy v1.2.3 to production
+  - Stop 3 running instances
+  - Pull image registry.io/app:v1.2.3
+  - Start 3 new instances
+No changes made.
+
+$ mycli deploy --env production --tag v1.2.3
+✓ Deployed v1.2.3 to production
+```
+
+### 8. `--yes` / `--force` to skip confirmations
+
+Humans get “are you sure?”; agents pass **`--yes`** (or your documented bypass). Keep the **safe default** for humans; allow **explicit** non-interactive override for automation.
+
+### 9. Predictable command structure
+
+If an agent learns `mycli service list`, it should infer `mycli deploy list`, `mycli config list`. Pick **one pattern** (e.g. **resource + verb**) and use it **everywhere**.
+
+### 10. Return data on success
+
+Show what matters next: **deploy ID**, **URL**, **identifiers**, **duration**. Decorative output is optional; **facts** are not.
+
+```bash
+deployed v1.2.3 to staging
+url: https://staging.myapp.com
+deploy_id: dep_abc123
+duration: 34s
+```
+
+## Implementation checklist
+
+- [ ] Happy paths run with **zero prompts** when flags/env/stdin provide required input
+- [ ] Each subcommand’s `--help` ends with **copy-paste examples**
+- [ ] Missing required input → **immediate exit**, stderr message, **suggested command** (and list/discover commands if helpful)
+- [ ] Destructive or state-changing commands are **idempotent** or clearly **single-shot** with safe retry behavior documented
+- [ ] Risky commands support **`--dry-run`** (or equivalent) with a clear plan summary
+- [ ] Confirmations can be skipped with **`--yes`** / **`--force`** (documented, not hidden)
+- [ ] Command tree follows a **single naming pattern** across the CLI
+- [ ] Success output includes **stable, parse-friendly** facts (IDs, URLs, paths, durations)
+
+## Anti-patterns (agent breakers)
+
+- Arrow-key or mid-flight prompts as the only way to supply required data
+- Global help that lists everything with no path to **per-subcommand** `--help` + examples
+- Hanging or defaulting silently when input is missing
+- Duplicate resources on identical repeated invocations (unless explicitly documented as “run each time”)
+
+## Optional deep dive
+
+For the full article prose and context, see `references/BUILDING-CLIS-FOR-AGENTS.md` in this skill folder (load only when the user asks for the original wording or attribution details).

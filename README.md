@@ -1,64 +1,37 @@
-# Useful Agent Skills
+# CLI skills for agents
 
-A collection of [Agent Skills](https://cursor.com/docs/context/skills) for Cursor and other agents that follow the same format. Each skill is a folder with a `SKILL.md` file (YAML frontmatter + instructions).
+This repository is a **single [Agent Skill](https://cursor.com/docs/context/skills)**: guidance for building command-line tools that **AI agents** (and CI) can run reliably.
 
-## Why this repo exists
+It follows Eric Zakariasson’s *Building CLIs for agents* — [post on X](https://x.com/ericzakariasson/status/2036762680401223946). The skill distills that article into actionable rules; the original prose lives under `references/` for optional reading.
 
-These skills package repeatable workflows and checklists so agents apply them when the task matches the skill’s `description`. They follow the open [Agent Skills](https://agentskills.io/) pattern: portable, version-controlled, and progressively loaded.
-
-**Origin:** The collection includes **`cli-for-agents`**, which encodes practices from Eric Zakariasson’s *Building CLIs for agents* (shared as [this post on X](https://x.com/ericzakariasson/status/2036762680401223946)). Repo layout follows [Cursor Agent Skills](https://cursor.com/docs/context/skills) / [agentskills.io](https://agentskills.io/).
-
-## Layout
+## What’s inside
 
 ```
-.cursor/skills/
-├── <skill-name>/
-│   ├── SKILL.md          # required
-│   ├── scripts/          # optional
-│   ├── references/       # optional
-│   └── assets/           # optional
+.cursor/skills/cli-for-agents/
+├── SKILL.md                              # what agents load first
+└── references/
+    └── BUILDING-CLIS-FOR-AGENTS.md       # full article text (reference)
 ```
 
-The `name` field in each `SKILL.md` frontmatter matches the parent folder name.
+## Guidelines (summary)
+
+| Topic | Rule |
+|--------|------|
+| Input | **Non-interactive first** — every value via flags (or stdin/env); interactive only as fallback |
+| Docs | **Progressive discovery** — no doc dump; `tool` → subcommand → `tool cmd --help` |
+| Help | **Examples on every subcommand `--help`** — pattern-matching beats prose |
+| Pipes | **Flags + stdin** — support pipelines; no odd positional-only flows |
+| Errors | **Fail fast** — suggest the exact fix / next command |
+| Retries | **Idempotent** where it matters — safe when agents rerun |
+| Risk | **`--dry-run`** — show plan, then run for real |
+| Confirm | **`--yes` / `--force`** — documented bypass for automation |
+| Shape | **One pattern** (e.g. resource + verb) everywhere |
+| Success | **Facts** — IDs, URLs, duration; minimal decoration |
 
 ## Use in Cursor
 
-1. **Clone or submodule** this repo into your project, or copy `.cursor/skills/` into an existing project.
-2. **Remote rule:** Cursor Settings → Rules → Add Rule → Remote Rule (GitHub) → paste this repository URL (if your Cursor version supports skill repos that way).
-3. **Manual invoke:** Type `/` in Agent chat and search for the skill name.
-
-Skills with `disable-model-invocation: true` in frontmatter only apply when explicitly invoked.
-
-## Skills included
-
-| Skill | Purpose |
-|--------|---------|
-| `api-design-rest` | REST API design, errors, versioning, pagination |
-| `cli-design` | Flags, stdin/stdout, exit codes, help text |
-| `cli-for-agents` | Non-interactive CLIs, `--help` examples, dry-run, idempotency (per *Building CLIs for agents*) |
-| `code-review` | Structured review: correctness, security, maintainability |
-| `debugging-systematic` | Reproduce, isolate, verify fixes |
-| `dependency-management` | Upgrades, semver, lockfiles, supply chain |
-| `documentation` | READMEs, API docs, inline comments |
-| `error-handling` | User-facing errors, logging, recovery |
-| `frontend-accessibility` | a11y checks for web UI |
-| `git-workflow` | Branches, commits, PR hygiene |
-| `internationalization` | Strings, plurals, dates, RTL |
-| `mcp-server-design` | MCP tools, auth, schemas, safety |
-| `observability-logging` | Structured logs, metrics, tracing |
-| `performance` | Measure first, profile, avoid premature optimization |
-| `refactoring-safe` | Small steps, tests, behavior preservation |
-| `security-review` | Secrets, injection, auth, supply chain |
-| `sql-safe` | Parameterized SQL, migrations, least privilege |
-| `testing-strategy` | Test pyramid, boundaries, flaky tests |
-
-## Authoring new skills
-
-1. Create `.cursor/skills/<name>/SKILL.md`.
-2. Frontmatter: `name` (same as folder), `description` (when to use this skill—agents match on this).
-3. Body: **When to Use**, **Instructions**, optional **Anti-patterns** / **Checklist**.
-
-See [Cursor: Agent Skills](https://cursor.com/docs/context/skills) for full field list and examples.
+1. Copy `.cursor/skills/cli-for-agents` into your project’s `.cursor/skills/`, or add this repo as a remote rule if your Cursor version supports it (Settings → Rules).
+2. Invoke **`/cli-for-agents`** when you want the full skill in context, or let the agent pick it up from the `description` when you’re building or reviewing a CLI.
 
 ## License
 
