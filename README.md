@@ -6,7 +6,7 @@ A collection of [Agent Skills](https://cursor.com/docs/context/skills) for Curso
 
 These skills package repeatable workflows and checklists so agents apply them when the task matches the skill’s `description`. They follow the open [Agent Skills](https://agentskills.io/) pattern: portable, version-controlled, and progressively loaded.
 
-**Note:** The original X post linked as inspiration could not be fetched from this environment (403). Structure and conventions match current Cursor documentation as of 2025.
+**Origin:** The collection includes **`cli-for-agents`**, which encodes practices from Eric Zakariasson’s *Building CLIs for agents* (shared as [this post on X](https://x.com/ericzakariasson/status/2036762680401223946)). Repo layout follows [Cursor Agent Skills](https://cursor.com/docs/context/skills) / [agentskills.io](https://agentskills.io/).
 
 ## Layout
 
@@ -35,6 +35,7 @@ Skills with `disable-model-invocation: true` in frontmatter only apply when expl
 |--------|---------|
 | `api-design-rest` | REST API design, errors, versioning, pagination |
 | `cli-design` | Flags, stdin/stdout, exit codes, help text |
+| `cli-for-agents` | Non-interactive CLIs, `--help` examples, dry-run, idempotency (per *Building CLIs for agents*) |
 | `code-review` | Structured review: correctness, security, maintainability |
 | `debugging-systematic` | Reproduce, isolate, verify fixes |
 | `dependency-management` | Upgrades, semver, lockfiles, supply chain |
